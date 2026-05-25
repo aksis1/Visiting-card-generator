@@ -95,7 +95,7 @@ export default function CardFront() {
         textAlign: 'center',
         fontFamily: "'IBM Plex Sans', sans-serif",
         fontWeight: 500,
-        fontSize: 21.6 * S,
+        fontSize: 24 * S, // 12px on the 540 card
         lineHeight: `${38.4 * S}px`,
         color: '#ffffff',
         whiteSpace: 'nowrap',

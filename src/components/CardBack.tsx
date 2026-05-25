@@ -1,7 +1,7 @@
 // Back card — exact Figma layout scaled 0.5× (1080×648 → 540×324)
 // node 39:100 "Iesh Front"
 
-import { useState } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import PowerplayLogo from './PowerplayLogo'
 import type { CardData } from '../App'
@@ -15,8 +15,31 @@ const INSET = 44
 const PANEL_W = 400 * S
 const PANEL_H = 560 * S
 
+// Name must stay left of the photo panel: from name x=92 to the panel divider at
+// x=636, less a small breathing margin.
+const NAME_MAX_W = (636 - 92 - 20) * S
+
 export default function CardBack({ data }: { data: CardData }) {
   const { firstName, lastName, title, webLink, photo } = data
+
+  // Shrink the name if it would run into the photo panel (measured, so it works
+  // for any name length). transform:scale doesn't change scrollWidth, so the
+  // measurement stays stable across re-renders.
+  const nameRef = useRef<HTMLDivElement>(null)
+  const [nameScale, setNameScale] = useState(1)
+  useLayoutEffect(() => {
+    const el = nameRef.current
+    if (!el) return
+    const fit = () => {
+      const natural = el.scrollWidth
+      setNameScale(natural > NAME_MAX_W ? Math.max(0.5, NAME_MAX_W / natural) : 1)
+    }
+    fit()
+    // Re-fit once the Clash Grotesk variable font loads (its metrics differ).
+    let cancelled = false
+    document.fonts?.ready.then(() => { if (!cancelled) fit() })
+    return () => { cancelled = true }
+  }, [firstName, lastName])
 
   // Track natural image dimensions to manually compute the fit —
   // html2canvas does not respect object-fit / object-position. We tag the size
@@ -113,14 +136,17 @@ export default function CardBack({ data }: { data: CardData }) {
         {/* ── Name + Title — frame-relative x=48 y=116 w=474 ── */}
         <div style={{ position: 'absolute', left: (92 - INSET) * S, top: (160 - INSET) * S, width: 474 * S }}>
 
-          {/* Name row — first name heavier, last name regular */}
-          <div style={{
+          {/* Name row — first name heavier, last name regular. Scales down if it
+              would reach the photo panel; transform-origin keeps it left-anchored. */}
+          <div ref={nameRef} style={{
             display: 'flex',
             alignItems: 'baseline',
             gap: 19.2 * S,
             height: 77 * S,
             whiteSpace: 'nowrap',
             overflow: 'visible',
+            transform: nameScale < 1 ? `scale(${nameScale})` : undefined,
+            transformOrigin: 'left top',
           }}>
             <span style={{
               fontFamily: "'Clash Grotesk Variable', 'Clash Grotesk', sans-serif",
@@ -149,7 +175,7 @@ export default function CardBack({ data }: { data: CardData }) {
           <div style={{
             fontFamily: "'IBM Plex Sans', sans-serif",
             fontWeight: 400,
-            fontSize: 24 * S,
+            fontSize: 28 * S, // 14px on the 540 card
             lineHeight: `${38.4 * S}px`,
             color: '#05287a',
             marginTop: 9.6 * S,
@@ -209,12 +235,12 @@ export default function CardBack({ data }: { data: CardData }) {
           width: 187 * S,
           fontFamily: "'IBM Plex Sans', sans-serif",
           fontWeight: 400,
-          fontSize: 14.4 * S,
+          fontSize: 18 * S, // 9px on the 540 card
           lineHeight: `${19.2 * S}px`,
           color: '#5c77be',
           whiteSpace: 'nowrap',
         }}>
-          Connect with me on Linkedin
+          Connect with me
         </div>
       </div>
     </div>

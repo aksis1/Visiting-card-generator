@@ -66,6 +66,14 @@
 }
 
 /* ── App shell: the machine seen from above ───────────────────────────────── */
+/* Off-screen render used only for PDF capture — no transforms, natural size */
+.export-stage {
+  position: fixed;
+  left: -100000px;
+  top: 0;
+  pointer-events: none;
+}
+
 .machine {
   display: flex;
   height: 100vh;
@@ -84,9 +92,9 @@
   width: 384px;
   flex-shrink: 0;
   border-radius: 16px;
-  background:
-    linear-gradient(180deg, var(--beige-hi) 0%, var(--beige) 14%, var(--beige-mid) 100%);
-  border: 1px solid var(--beige-edge);
+  /* same body colour as the right scanner pane */
+  background: linear-gradient(180deg, var(--lid) 0%, #e9e6dd 100%);
+  border: 1px solid var(--lid-edge);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.6) inset,
     0 -22px 40px rgba(0, 0, 0, 0.14) inset,
@@ -549,15 +557,59 @@
 }
 .bed-rod.top { top: calc(39% - 10px); }
 .bed-rod.bottom { top: calc(39% + 24px); }
-/* vent / sensor dot patch, lower corner */
+/* vent / sensor dot patch, lower corner (light so it reads under dark glass) */
 .bed-vents {
   position: absolute;
   right: 30px; bottom: 28px;
   width: 96px; height: 40px;
   border-radius: 4px;
-  background-image: radial-gradient(rgba(0,0,0,0.22) 1px, transparent 1.5px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.34) 1px, transparent 1.6px);
   background-size: 8px 8px;
-  opacity: 0.6;
+  opacity: 0.75;
+}
+/* roller cylinders the sheet feeds across */
+.bed-roller {
+  position: absolute;
+  left: 18px; right: 18px;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #f3f5f0 0%, #c8cec6 45%, #9aa098 76%, #d0d5ce 100%);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+.bed-roller.top { top: 13%; }
+.bed-roller.bottom { bottom: 13%; }
+/* flat ribbon / flex cable feeding the carriage */
+.bed-cable {
+  position: absolute;
+  left: 9%; top: 17%;
+  width: 22px; height: 66%;
+  border-radius: 4px;
+  transform: rotate(-3deg);
+  background: repeating-linear-gradient(180deg, #d4d9d2 0 2px, #abb1a9 2px 4px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  opacity: 0.85;
+}
+/* L-shaped mounting brackets in the corners */
+.bed-bracket {
+  position: absolute;
+  width: 22px; height: 22px;
+  border: 3px solid transparent;
+  border-radius: 3px;
+  opacity: 0.7;
+}
+.bed-bracket.b-tl { top: 16px; left: 16px; border-top-color: #e6eae3; border-left-color: #e6eae3; }
+.bed-bracket.b-tr { top: 16px; right: 16px; border-top-color: #e6eae3; border-right-color: #e6eae3; }
+.bed-bracket.b-bl { bottom: 16px; left: 16px; border-bottom-color: #e6eae3; border-left-color: #e6eae3; }
+.bed-bracket.b-br { bottom: 16px; right: 16px; border-bottom-color: #e6eae3; border-right-color: #e6eae3; }
+/* etched component label */
+.bed-etch {
+  position: absolute;
+  left: 30px; bottom: 26px;
+  font-family: var(--lcd-font);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
 }
 /* small recessed screws under the glass */
 .bed-screw {
@@ -574,20 +626,22 @@
 }
 .bed-screw.s1 { top: 18px; right: 22px; }
 .bed-screw.s2 { bottom: 18px; left: 22px; }
+.bed-screw.s3 { top: 18px; left: 22px; }
+.bed-screw.s4 { bottom: 18px; right: 22px; }
 
-/* the green glass tint laid over the internals (below the card + glare) */
+/* dark smoked-green glass laid over the internals + scan lamp (below the card) */
 .glass-tint {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   pointer-events: none;
   background: linear-gradient(135deg,
-    rgba(150, 192, 162, 0.46) 0%,
-    rgba(120, 174, 150, 0.34) 48%,
-    rgba(150, 195, 168, 0.40) 100%);
+    rgba(13, 38, 27, 0.68) 0%,
+    rgba(19, 50, 36, 0.56) 48%,
+    rgba(10, 33, 24, 0.64) 100%);
   box-shadow:
-    inset 0 3px 22px rgba(30, 60, 45, 0.30),
-    inset 0 -3px 22px rgba(30, 60, 45, 0.22);
+    inset 0 4px 30px rgba(0, 0, 0, 0.5),
+    inset 0 -4px 30px rgba(0, 0, 0, 0.4);
 }
 
 /* scanner header strip (status, like a copier readout) */
@@ -608,7 +662,7 @@
 .platen-fit {
   transform-origin: center center;
   position: relative;
-  z-index: 2;
+  z-index: 3; /* sits ON the glass, above the smoked tint */
   transition: transform 0.2s ease;
 }
 .platen-stage {
@@ -645,24 +699,25 @@
 .scan-bar {
   position: absolute;
   left: 0; right: 0; top: 0;
-  height: 64px;
-  z-index: 5;
+  height: 84px;
+  z-index: 1; /* under the smoked glass — reads as a lamp moving inside the machine */
   pointer-events: none;
   background: linear-gradient(180deg,
-    rgba(150, 255, 190, 0) 0%,
-    rgba(150, 255, 190, 0.18) 45%,
-    rgba(190, 255, 210, 0.55) 50%,
-    rgba(150, 255, 190, 0.18) 55%,
-    rgba(150, 255, 190, 0) 100%);
+    rgba(170, 255, 205, 0) 0%,
+    rgba(190, 255, 215, 0.45) 40%,
+    rgba(240, 255, 245, 1) 50%,
+    rgba(190, 255, 215, 0.45) 60%,
+    rgba(170, 255, 205, 0) 100%);
+  box-shadow: 0 0 24px rgba(150, 255, 190, 0.7);
   opacity: 0;
 }
 @keyframes scan-sweep {
-  0%   { transform: translateY(-70px); opacity: 0; }
+  0%   { transform: translateY(-90px); opacity: 0; }
   10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { transform: translateY(calc(100% + 70px)); opacity: 0; }
+  88%  { opacity: 1; }
+  100% { transform: translateY(calc(100% + 90px)); opacity: 0; }
 }
-.scan-bar.run { animation: scan-sweep 0.95s ease-in-out; }
+.scan-bar.run { animation: scan-sweep 0.55s ease-in; }
 
 /* ── Flip button (bottom-centre of scanner) ───────────────────────────────── */
 .flip-dock {

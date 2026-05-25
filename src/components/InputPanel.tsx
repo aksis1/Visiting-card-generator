@@ -79,17 +79,17 @@ export default function InputPanel({ data, onChange, onExport, exporting }: Prop
         {/* Fields */}
         <Field label="First Name">
           <input className="r-input" type="text" value={data.firstName}
-            onChange={e => update('firstName', e.target.value)} placeholder="IESH" />
+            onChange={e => update('firstName', e.target.value)} placeholder="John" />
         </Field>
 
         <Field label="Last Name">
           <input className="r-input" type="text" value={data.lastName}
-            onChange={e => update('lastName', e.target.value)} placeholder="DIXIT" />
+            onChange={e => update('lastName', e.target.value)} placeholder="Doe" />
         </Field>
 
         <Field label="Title / Designation">
           <input className="r-input" type="text" value={data.title}
-            onChange={e => update('title', e.target.value)} placeholder="Co-Founder, CEO" />
+            onChange={e => update('title', e.target.value)} placeholder="Sales Team" />
         </Field>
 
         <Field label="Web Link · QR">
