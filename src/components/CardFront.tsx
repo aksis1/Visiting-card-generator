@@ -8,7 +8,7 @@ const S = 0.5
 // html2canvas renders text lower than the live DOM; the export copy lifts the
 // bottom URL back up to its design position. Preview passes exportMode=false.
 export default function CardFront({ exportMode = false }: { exportMode?: boolean } = {}) {
-  const URL_LIFT = exportMode ? 16 : 0
+  const URL_LIFT = exportMode ? 20 : 0 // measured html2canvas shift for the 24px URL
   return (
     <div style={{
       width: 1080 * S,

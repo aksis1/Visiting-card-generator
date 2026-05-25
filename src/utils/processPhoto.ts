@@ -16,11 +16,16 @@ export interface ProcessResult {
 // local @imgly model, then auto-crops to the subject's alpha bounding box so the
 // face is optically well-sized regardless of how the source was framed.
 export async function processPhoto(file: File): Promise<ProcessResult> {
+  // Normalize to PNG first. The bg-removal step (imgly + Gemini) only reliably
+  // handles PNG/JPEG; AVIF/WebP/HEIC uploads would otherwise fail to decode and
+  // fall through to the original image (background intact, nothing to crop).
+  const source = await normalizeImage(file)
+
   let blob: Blob | null = null
   let engine: ProcessResult['engine'] = 'imgly'
 
   try {
-    const geminiBlob = await removeViaGemini(file)
+    const geminiBlob = await removeViaGemini(source)
     if (geminiBlob && (await hasUsableAlpha(geminiBlob))) {
       blob = geminiBlob
       engine = 'gemini'
@@ -30,12 +35,34 @@ export async function processPhoto(file: File): Promise<ProcessResult> {
   }
 
   if (!blob) {
-    blob = await removeBackground(file)
+    blob = await removeBackground(source)
     engine = 'imgly'
   }
 
   const dataUrl = await autoCropToSubject(blob)
   return { dataUrl, engine }
+}
+
+// Decode any browser-supported image (AVIF, WebP, HEIC on supported browsers, …)
+// and re-encode it as PNG so downstream bg-removal always gets a format it can
+// read. PNG/JPEG pass through untouched. Falls back to the original on failure.
+async function normalizeImage(file: File): Promise<File> {
+  const t = file.type
+  if (t === 'image/png' || t === 'image/jpeg' || t === 'image/jpg') return file
+  try {
+    const bitmap = await createImageBitmap(file)
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
+    bitmap.close?.()
+    const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'))
+    if (!blob) return file
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.png', { type: 'image/png' })
+  } catch (err) {
+    console.warn('Could not normalize image to PNG, using original:', err)
+    return file
+  }
 }
 
 async function removeViaGemini(file: File): Promise<Blob | null> {

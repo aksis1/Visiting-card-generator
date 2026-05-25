@@ -22,15 +22,16 @@ const NAME_MAX_W = (636 - 92 - 20) * S
 export default function CardBack({ data, exportMode = false }: { data: CardData; exportMode?: boolean }) {
   const { firstName, lastName, title, webLink, photo } = data
 
-  // html2canvas renders TEXT ~7% (~40px in 1080-space) lower than the live DOM,
-  // while images (logo, QR) are faithful. So in the off-screen export copy we lift
-  // only the text up to compensate; the QR keeps its design position. We also open
-  // the name→title gap a touch, which html2canvas otherwise compresses.
-  const LIFT = exportMode ? 40 : 0
-  const TITLE_GAP = 9.6 + (exportMode ? 14 : 0)
-  // Small upward nudge for the QR + caption unit in export, so the gap below the
-  // caption optically balances the gap above the logo.
-  const UNIT_LIFT = exportMode ? 16 : 0
+  // WYSIWYG: html2canvas renders TEXT ~0.7em lower than the live DOM (measured per
+  // size, in 1080-space units below), while images (logo, QR) are faithful. In the
+  // off-screen export copy we lift each text element by its own measured shift, so
+  // the exported PDF renders pixel-identical to the on-screen preview.
+  const nameShift = exportMode ? 47 : 0    // 67.2px name
+  const titleShift = exportMode ? 24 : 0   // 28px title
+  const connectShift = exportMode ? 20 : 0 // 18px caption
+  // Design (shown in BOTH preview and export):
+  const TITLE_PAD = 20  // padding between name and title (Figma was 9.6)
+  const UNIT_UP = 14    // raise the QR + caption unit for bottom balance
 
   // Shrink the name if it would run into the photo panel (measured, so it works
   // for any name length). transform:scale doesn't change scrollWidth, so the
@@ -144,7 +145,7 @@ export default function CardBack({ data, exportMode = false }: { data: CardData;
         </div>
 
         {/* ── Name + Title — frame-relative x=48 y=116 w=474 ── */}
-        <div style={{ position: 'absolute', left: (92 - INSET) * S, top: (160 - LIFT - INSET) * S, width: 474 * S }}>
+        <div style={{ position: 'absolute', left: (92 - INSET) * S, top: (160 - nameShift - INSET) * S, width: 474 * S }}>
 
           {/* Name row — first name heavier, last name regular. Scales down if it
               would reach the photo panel; transform-origin keeps it left-anchored. */}
@@ -188,7 +189,7 @@ export default function CardBack({ data, exportMode = false }: { data: CardData;
             fontSize: 28 * S, // 14px on the 540 card
             lineHeight: `${38.4 * S}px`,
             color: '#05287a',
-            marginTop: TITLE_GAP * S,
+            marginTop: (TITLE_PAD + (nameShift - titleShift)) * S,
           }}>
             {title || 'Title'}
           </div>
@@ -198,7 +199,7 @@ export default function CardBack({ data, exportMode = false }: { data: CardData;
         <div style={{
           position: 'absolute',
           left: (92 - INSET) * S,
-          top: (344 - UNIT_LIFT - INSET) * S,
+          top: (344 - UNIT_UP - INSET) * S,
           width: 196.8 * S,
           height: 196.8 * S,
           border: `${1.757 * S}px solid #78c6ff`,
@@ -241,7 +242,7 @@ export default function CardBack({ data, exportMode = false }: { data: CardData;
         <div style={{
           position: 'absolute',
           left: (97 - INSET) * S,
-          top: (550.4 - UNIT_LIFT - INSET) * S,
+          top: (550.4 - UNIT_UP - connectShift - INSET) * S,
           width: 187 * S,
           fontFamily: "'IBM Plex Sans', sans-serif",
           fontWeight: 400,
