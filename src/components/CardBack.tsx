@@ -19,8 +19,15 @@ const PANEL_H = 560 * S
 // x=636, less a small breathing margin.
 const NAME_MAX_W = (636 - 92 - 20) * S
 
-export default function CardBack({ data }: { data: CardData }) {
+export default function CardBack({ data, exportMode = false }: { data: CardData; exportMode?: boolean }) {
   const { firstName, lastName, title, webLink, photo } = data
+
+  // html2canvas renders TEXT ~7% (~40px in 1080-space) lower than the live DOM,
+  // while images (logo, QR) are faithful. So in the off-screen export copy we lift
+  // only the text up to compensate; the QR keeps its design position. We also open
+  // the name→title gap a touch, which html2canvas otherwise compresses.
+  const LIFT = exportMode ? 40 : 0
+  const TITLE_GAP = 9.6 + (exportMode ? 14 : 0)
 
   // Shrink the name if it would run into the photo panel (measured, so it works
   // for any name length). transform:scale doesn't change scrollWidth, so the
@@ -134,7 +141,7 @@ export default function CardBack({ data }: { data: CardData }) {
         </div>
 
         {/* ── Name + Title — frame-relative x=48 y=116 w=474 ── */}
-        <div style={{ position: 'absolute', left: (92 - INSET) * S, top: (160 - INSET) * S, width: 474 * S }}>
+        <div style={{ position: 'absolute', left: (92 - INSET) * S, top: (160 - LIFT - INSET) * S, width: 474 * S }}>
 
           {/* Name row — first name heavier, last name regular. Scales down if it
               would reach the photo panel; transform-origin keeps it left-anchored. */}
@@ -178,7 +185,7 @@ export default function CardBack({ data }: { data: CardData }) {
             fontSize: 28 * S, // 14px on the 540 card
             lineHeight: `${38.4 * S}px`,
             color: '#05287a',
-            marginTop: 9.6 * S,
+            marginTop: TITLE_GAP * S,
           }}>
             {title || 'Title'}
           </div>

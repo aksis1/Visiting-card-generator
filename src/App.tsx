@@ -175,7 +175,7 @@ export default function App() {
         <CardFront />
       </div>
       <div ref={backRef}>
-        <CardBack data={data} />
+        <CardBack data={data} exportMode />
       </div>
     </div>
     </>
