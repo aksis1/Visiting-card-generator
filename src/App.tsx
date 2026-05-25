@@ -172,7 +172,7 @@ export default function App() {
         or 3D rotation. */}
     <div className="export-stage" aria-hidden="true">
       <div ref={frontRef}>
-        <CardFront />
+        <CardFront exportMode />
       </div>
       <div ref={backRef}>
         <CardBack data={data} exportMode />

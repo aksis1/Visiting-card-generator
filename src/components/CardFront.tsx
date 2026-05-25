@@ -5,7 +5,10 @@ import PowerplayLogo from './PowerplayLogo'
 
 const S = 0.5
 
-export default function CardFront() {
+// html2canvas renders text lower than the live DOM; the export copy lifts the
+// bottom URL back up to its design position. Preview passes exportMode=false.
+export default function CardFront({ exportMode = false }: { exportMode?: boolean } = {}) {
+  const URL_LIFT = exportMode ? 16 : 0
   return (
     <div style={{
       width: 1080 * S,
@@ -90,7 +93,7 @@ export default function CardFront() {
       <div style={{
         position: 'absolute',
         left: 432 * S,
-        top: 582 * S,
+        top: (582 - URL_LIFT) * S,
         width: 216 * S,
         textAlign: 'center',
         fontFamily: "'IBM Plex Sans', sans-serif",
