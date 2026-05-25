@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import InputPanel from './components/InputPanel'
 import CardFront from './components/CardFront'
 import CardBack from './components/CardBack'
@@ -21,12 +21,39 @@ export default function App() {
     photo: null,
   })
   const [exporting, setExporting] = useState(false)
+  const [showBack, setShowBack] = useState(false)
+  const [pulse, setPulse] = useState(0) // bumps to replay the scan-bar sweep
+  const [fit, setFit] = useState(1)     // scale so the 540×324 card fits the glass
   const frontRef = useRef<HTMLDivElement>(null)
   const backRef = useRef<HTMLDivElement>(null)
+  const glassRef = useRef<HTMLDivElement>(null)
+
+  // Fit the fixed-size card to the glass platen on resize. The card stays 540×324
+  // in layout (so html2canvas exports it crisp); only a visual transform scales it.
+  useLayoutEffect(() => {
+    const glass = glassRef.current
+    if (!glass) return
+    const CARD_W = 540, CARD_H = 324, MARGIN = 56
+    const recompute = () => {
+      const w = glass.clientWidth - MARGIN
+      const h = glass.clientHeight - MARGIN
+      setFit(Math.max(0.4, Math.min(w / CARD_W, h / CARD_H, 1.3)))
+    }
+    recompute()
+    const ro = new ResizeObserver(recompute)
+    ro.observe(glass)
+    return () => ro.disconnect()
+  }, [])
+
+  const flip = () => {
+    setShowBack(s => !s)
+    setPulse(p => p + 1)
+  }
 
   const handleExport = async () => {
     if (!frontRef.current || !backRef.current) return
     setExporting(true)
+    setPulse(p => p + 1)
     try {
       await exportToPdf(frontRef.current, backRef.current)
     } finally {
@@ -35,46 +62,84 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, sans-serif' }}>
-      {/* Left: Input Panel */}
-      <div style={{
-        width: 380,
-        flexShrink: 0,
-        background: 'white',
-        borderRight: '1px solid #e2e8f0',
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
+    <div className="machine">
+      {/* ── Left: beige control console ── */}
+      <div className="console">
         <InputPanel data={data} onChange={setData} onExport={handleExport} exporting={exporting} />
+        <span className="screw tl" />
+        <span className="screw tr" />
+        <span className="screw bl" />
+        <span className="screw br" />
       </div>
 
-      {/* Right: Preview */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 36,
-        padding: 48,
-        background: '#f1f5f9',
-      }}>
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10, textAlign: 'center', margin: '0 0 10px' }}>Front</p>
-          <div ref={frontRef} style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.2)', borderRadius: 8, overflow: 'hidden' }}>
-            <CardFront />
+      {/* ── Right: scanner lid + glass bed ── */}
+      <div className="scanner">
+        <div className="scanner-head">
+          <span className="scanner-title">Platen · Glass A4</span>
+          <span className="side-pill">{showBack ? 'SIDE B / BACK' : 'SIDE A / FRONT'}</span>
+        </div>
+
+        <div className="glass" ref={glassRef}>
+          {/* machine internals seen under the glass */}
+          <div className="platen-bed">
+            <div className="bed-calib" />
+            <div className="bed-rod top" />
+            <div className="bed-rail" />
+            <div className="bed-rod bottom" />
+            <div className="bed-vents" />
+            <span className="bed-screw s1" />
+            <span className="bed-screw s2" />
+          </div>
+          {/* green-tinted glass over the internals */}
+          <div className="glass-tint" />
+
+          {pulse > 0 && <div key={pulse} className="scan-bar run" />}
+
+          <div className="platen-fit" style={{ transform: `scale(${fit})` }}>
+            <div className="platen-stage">
+              <div className={`flip-card${showBack ? ' show-back' : ''}`}>
+                <div className="flip-face flip-face--front">
+                  <div className="card-shell">
+                    <div ref={frontRef}>
+                      <CardFront />
+                    </div>
+                  </div>
+                </div>
+                <div className="flip-face flip-face--back">
+                  <div className="card-shell">
+                    <div ref={backRef}>
+                      <CardBack data={data} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10, textAlign: 'center', margin: '0 0 10px' }}>Back</p>
-          <div ref={backRef} style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.12)', borderRadius: 8, overflow: 'hidden' }}>
-            <CardBack data={data} />
-          </div>
+        <div className="flip-dock">
+          <button className="flip-btn" onClick={flip} title="Flip card" aria-label="Flip card">
+            <FlipIcon />
+          </button>
+          <span className="flip-caption">Flip card</span>
         </div>
+
+        <span className="screw tl" />
+        <span className="screw tr" />
+        <span className="screw bl" />
+        <span className="screw br" />
       </div>
     </div>
+  )
+}
+
+function FlipIcon() {
+  return (
+    <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      <path d="M3 21v-5h5" />
+    </svg>
   )
 }

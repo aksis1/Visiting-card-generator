@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { removeBackground } from '@imgly/background-removal'
+import { processPhoto } from '../utils/processPhoto'
 import type { CardData } from '../App'
 
 interface Props {
@@ -13,6 +13,7 @@ export default function InputPanel({ data, onChange, onExport, exporting }: Prop
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [removingBg, setRemovingBg] = useState(false)
   const [bgError, setBgError] = useState<string | null>(null)
+  const [engine, setEngine] = useState<'gemini' | 'imgly' | null>(null)
 
   const update = (field: keyof CardData, value: string | null) =>
     onChange({ ...data, [field]: value })
@@ -22,18 +23,17 @@ export default function InputPanel({ data, onChange, onExport, exporting }: Prop
     if (!file) return
 
     setBgError(null)
+    setEngine(null)
     setRemovingBg(true)
 
     try {
-      const resultBlob = await removeBackground(file)
-      const url = URL.createObjectURL(resultBlob)
-      update('photo', url)
+      const { dataUrl, engine } = await processPhoto(file)
+      setEngine(engine)
+      update('photo', dataUrl)
     } catch (err) {
       console.error(err)
-      setBgError('Background removal failed. Using original image.')
-      // Fallback: use original image
-      const url = URL.createObjectURL(file)
-      update('photo', url)
+      setBgError('Scan failed — using original image.')
+      update('photo', URL.createObjectURL(file))
     } finally {
       setRemovingBg(false)
     }
@@ -41,167 +41,122 @@ export default function InputPanel({ data, onChange, onExport, exporting }: Prop
 
   const handleRemovePhoto = () => {
     update('photo', null)
+    setEngine(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const statusText = exporting ? 'PRINTING…' : removingBg ? 'SCANNING…' : '● READY'
+  const name = `${data.firstName} ${data.lastName}`.trim().toUpperCase() || 'NO INPUT'
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid #f1f5f9' }}>
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
-          Visiting Card Generator
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>
-          Customize the back of your card
-        </p>
-      </div>
+    <div className="console-body">
+      <div className="console-scroll">
+        {/* Brand / model plate */}
+        <div className="plate">
+          <img className="plate-logo" src="/assets/powerplay-ai.svg" alt="Powerplay" />
+          <div className="plate-model">
+            CARD COPIER
+            <br />
+            MODEL PP-2400
+          </div>
+        </div>
 
-      {/* Fields */}
-      <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* LCD status readout */}
+        <div className="lcd">
+          <div className="lcd-row">
+            <span className="lcd-label">Status</span>
+            <span className={`lcd-sm ${exporting || removingBg ? 'lcd-amber' : 'lcd-green'}`}>
+              {statusText}
+            </span>
+          </div>
+          <div className="lcd-row" style={{ marginTop: 6 }}>
+            <span className="lcd-amber lcd-big" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {name}
+            </span>
+          </div>
+        </div>
 
-        {/* First Name */}
+        {/* Fields */}
         <Field label="First Name">
-          <input
-            type="text"
-            value={data.firstName}
-            onChange={e => update('firstName', e.target.value)}
-            placeholder="IESH"
-            style={inputStyle}
-          />
+          <input className="r-input" type="text" value={data.firstName}
+            onChange={e => update('firstName', e.target.value)} placeholder="IESH" />
         </Field>
 
-        {/* Last Name */}
         <Field label="Last Name">
-          <input
-            type="text"
-            value={data.lastName}
-            onChange={e => update('lastName', e.target.value)}
-            placeholder="DIXIT"
-            style={inputStyle}
-          />
+          <input className="r-input" type="text" value={data.lastName}
+            onChange={e => update('lastName', e.target.value)} placeholder="DIXIT" />
         </Field>
 
-        {/* Title */}
         <Field label="Title / Designation">
-          <input
-            type="text"
-            value={data.title}
-            onChange={e => update('title', e.target.value)}
-            placeholder="Co-Founder, CEO"
-            style={inputStyle}
-          />
+          <input className="r-input" type="text" value={data.title}
+            onChange={e => update('title', e.target.value)} placeholder="Co-Founder, CEO" />
         </Field>
 
-        {/* Web Link */}
-        <Field label="Web Link (for QR code)">
-          <input
-            type="url"
-            value={data.webLink}
-            onChange={e => update('webLink', e.target.value)}
-            placeholder="https://www.getpowerplay.ai"
-            style={inputStyle}
-          />
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>
-            This link will be encoded into the QR code and shown as the URL.
-          </p>
+        <Field label="Web Link · QR">
+          <input className="r-input" type="url" value={data.webLink}
+            onChange={e => update('webLink', e.target.value)} placeholder="https://www.getpowerplay.ai" />
+          <span className="r-hint">&gt; encoded into the QR &amp; shown as the URL</span>
         </Field>
 
-        {/* Photo */}
+        {/* Photo control */}
         <Field label="Photo">
           {data.photo ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img
-                src={data.photo}
-                alt="Profile preview"
-                style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e2e8f0' }}
-              />
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 12, color: '#0f172a', fontWeight: 500 }}>Photo uploaded</p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#94a3b8' }}>Background removed</p>
+            <div className="photo-chip">
+              <img className="photo-thumb" src={data.photo} alt="Profile preview" />
+              <div className="photo-meta">
+                <div className="photo-name">PHOTO LOADED</div>
+                <div className="photo-sub">
+                  {engine === 'gemini' ? 'gemini · auto-cropped' : 'bg removed · auto-cropped'}
+                </div>
               </div>
-              <button onClick={handleRemovePhoto} style={ghostBtnStyle}>
-                Remove
-              </button>
+              <button className="r-btn r-btn--sm" onClick={handleRemovePhoto}>Eject</button>
             </div>
           ) : (
-            <div>
+            <>
               <button
+                className="r-btn r-btn--dashed"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={removingBg}
-                style={{
-                  ...uploadBtnStyle,
-                  opacity: removingBg ? 0.7 : 1,
-                  cursor: removingBg ? 'default' : 'pointer',
-                }}
               >
-                {removingBg ? (
-                  <>
-                    <SpinnerIcon />
-                    Removing background…
-                  </>
-                ) : (
-                  <>
-                    <UploadIcon />
-                    Upload Photo
-                  </>
-                )}
+                {removingBg ? (<><SpinnerIcon /> Scanning…</>) : (<><UploadIcon /> Load Photo</>)}
               </button>
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#94a3b8' }}>
-                Background will be automatically removed using AI.
-              </p>
-              {bgError && (
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#ef4444' }}>{bgError}</p>
-              )}
-            </div>
+              <span className="r-hint">&gt; background removed automatically</span>
+              {bgError && <span className="err">! {bgError}</span>}
+            </>
           )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoUpload}
-            style={{ display: 'none' }}
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
         </Field>
+
+        {/* Machine-detail block, pinned to the bottom of the panel */}
+        <div className="console-base">
+          {/* deck: knob + vent grille */}
+          <div className="deck">
+            <div className="knob" />
+            <div className="grille" />
+          </div>
+
+          {/* status LEDs */}
+          <div className="led-row">
+            <Led on label="Power" color="green" />
+            <Led on={removingBg} label="Scan" color="amber" />
+            <Led on={exporting} label="Print" color="amber" />
+          </div>
+
+          {/* etched spec plate */}
+          <div className="spec">
+            <div className="spec-line">AUTO BG-REMOVAL · QR ENCODE · DUPLEX EXPORT</div>
+            <div className="spec-line">OUTPUT 85.6 × 54 mm · 1080 × 648 px · 100–240V~</div>
+            <div className="barcode" />
+          </div>
+        </div>
       </div>
 
-      {/* Export Button */}
-      <div style={{ padding: 24, borderTop: '1px solid #f1f5f9' }}>
-        <button
-          onClick={onExport}
-          disabled={exporting}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            background: exporting ? '#94a3b8' : '#1e3a8a',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: exporting ? 'default' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            fontFamily: 'Inter, sans-serif',
-            transition: 'background 0.15s',
-          }}
-        >
-          {exporting ? (
-            <>
-              <SpinnerIcon />
-              Generating PDF…
-            </>
-          ) : (
-            <>
-              <PdfIcon />
-              Export PDF for Print
-            </>
-          )}
+      {/* Pinned primary action */}
+      <div className="console-foot">
+        <button className="r-btn r-btn--accent" onClick={onExport} disabled={exporting}>
+          {exporting ? (<><SpinnerIcon /> Printing…</>) : (<><PdfIcon /> Export PDF</>)}
         </button>
-        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
-          Exports front &amp; back as separate pages at business card size (85.6 × 54mm)
-        </p>
+        <div className="r-btn-label">Front &amp; back · business-card size 85.6 × 54 mm</div>
       </div>
     </div>
   )
@@ -209,59 +164,25 @@ export default function InputPanel({ data, onChange, onExport, exporting }: Prop
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {label}
-      </label>
+    <div className="r-field">
+      <label className="r-label">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '9px 12px',
-  border: '1px solid #e2e8f0',
-  borderRadius: 7,
-  fontSize: 14,
-  color: '#0f172a',
-  fontFamily: 'Inter, sans-serif',
-  outline: 'none',
-  background: '#f8fafc',
-  boxSizing: 'border-box',
-}
-
-const uploadBtnStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '9px 16px',
-  border: '1.5px dashed #cbd5e1',
-  borderRadius: 7,
-  background: '#f8fafc',
-  color: '#475569',
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: 'pointer',
-  fontFamily: 'Inter, sans-serif',
-  width: '100%',
-  justifyContent: 'center',
-}
-
-const ghostBtnStyle: React.CSSProperties = {
-  padding: '5px 10px',
-  border: '1px solid #e2e8f0',
-  borderRadius: 6,
-  background: 'white',
-  color: '#64748b',
-  fontSize: 12,
-  cursor: 'pointer',
-  fontFamily: 'Inter, sans-serif',
+function Led({ on, label, color }: { on: boolean; label: string; color: 'green' | 'amber' }) {
+  return (
+    <div className="led">
+      <span className={`led-lamp${on ? (color === 'green' ? ' on-green' : ' on-amber') : ''}`} />
+      <span className="led-text">{label}</span>
+    </div>
+  )
 }
 
 function UploadIcon() {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="17 8 12 3 7 8" />
       <line x1="12" y1="3" x2="12" y2="15" />
@@ -271,8 +192,7 @@ function UploadIcon() {
 
 function SpinnerIcon() {
   return (
-    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ animation: 'spin 0.8s linear infinite' }}>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    <svg className="r-spin" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
     </svg>
   )
@@ -280,7 +200,7 @@ function SpinnerIcon() {
 
 function PdfIcon() {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="9" y1="15" x2="15" y2="15" />

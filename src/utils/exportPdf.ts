@@ -7,17 +7,22 @@ const CARD_W_MM = 85.6
 const CARD_H_MM = 85.6 * (648 / 1080) // 51.36mm
 
 async function captureElement(el: HTMLElement, bg: string | null): Promise<HTMLCanvasElement> {
-  const rect = el.getBoundingClientRect()
+  // Use layout size (offsetWidth/Height), NOT getBoundingClientRect — the card sits
+  // inside a 3D flip container, and the bounding rect reflects the rotated/foreshortened
+  // box. html2canvas ignores ancestor transforms and renders the element upright, so the
+  // capture stays correct regardless of which side is currently shown.
+  const width = el.offsetWidth
+  const height = el.offsetHeight
   return html2canvas(el, {
     scale: 3,
     useCORS: true,
     allowTaint: true,
     backgroundColor: bg,
     logging: false,
-    width: rect.width,
-    height: rect.height,
-    windowWidth: rect.width,
-    windowHeight: rect.height,
+    width,
+    height,
+    windowWidth: width,
+    windowHeight: height,
     x: 0,
     y: 0,
   })

@@ -1,5 +1,5 @@
 // Front card — exact Figma layout scaled 0.5× (1080×648 → 540×324)
-// node 23:56 "Cover back"
+// node 39:56 "Cover back"
 
 import PowerplayLogo from './PowerplayLogo'
 
@@ -48,10 +48,10 @@ export default function CardFront() {
         </div>
       </div>
 
-      {/* Logo frame (rounded rect border) — left=256.8 top=216 w=566.4 h=216 */}
+      {/* Logo frame (rounded rect border + corner dots) — x=257 y=216 w=566.4 h=216 */}
       <div style={{
         position: 'absolute',
-        left: 256.8 * S,
+        left: 257 * S,
         top: 216 * S,
         width: 566.4 * S,
         height: 216 * S,
@@ -72,13 +72,13 @@ export default function CardFront() {
         />
       </div>
 
-      {/* Powerplay logo SVG — inset: 43.21% 31.1% 43.21% 31.11% → ~204×44 at scale 0.5 */}
+      {/* Powerplay logo — x=340 y=284 w=408.088 h=88 (nudged off geometric centre to feel optically centred) */}
       <div style={{
         position: 'absolute',
-        top: `${43.21}%`,
-        left: `${31.11}%`,
-        right: `${31.1}%`,
-        bottom: `${43.21}%`,
+        left: 340 * S,
+        top: 284 * S,
+        width: 408.088 * S,
+        height: 88 * S,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -86,51 +86,22 @@ export default function CardFront() {
         <PowerplayLogo variant="light" width={408.088 * S} height={88 * S} />
       </div>
 
-      {/* Left vertical line — x=80, full height */}
+      {/* Website URL — bottom centre, x=432 y=582 w=216 */}
       <div style={{
         position: 'absolute',
-        left: 80 * S,
-        top: 0,
-        bottom: 0,
-        width: 1.2 * S,
-        background: 'rgba(144,198,255,0.5)',
-      }} />
-
-      {/* Right vertical line — x=1000 (right=80) */}
-      <div style={{
-        position: 'absolute',
-        right: 80 * S,
-        top: 0,
-        bottom: 0,
-        width: 1.2 * S,
-        background: 'rgba(144,198,255,0.5)',
-      }} />
-
-      {/* Top horizontal line — y=61.2 */}
-      <div style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 61.2 * S,
-        height: 1.2 * S,
-        background: 'rgba(144,198,255,0.5)',
-      }} />
-
-      {/* Bottom horizontal line — y=568 (bottom=80) */}
-      <div style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 80 * S,
-        height: 1.2 * S,
-        background: 'rgba(144,198,255,0.5)',
-      }} />
-
-      {/* Corner markers */}
-      <img src="/assets/corner-tl.png" alt="" style={{ position: 'absolute', left: 72.8 * S, top: 52.8 * S, width: 15.6 * S, height: 15.6 * S }} />
-      <img src="/assets/corner-bl.png" alt="" style={{ position: 'absolute', left: 72.8 * S, bottom: 72.8 * S, width: 15.6 * S, height: 15.6 * S }} />
-      <img src="/assets/corner-tr.png" alt="" style={{ position: 'absolute', left: 992.6 * S, top: 52.8 * S, width: 15.6 * S, height: 15.6 * S }} />
-      <img src="/assets/corner-br.png" alt="" style={{ position: 'absolute', left: 992.6 * S, bottom: 72.8 * S, width: 15.6 * S, height: 15.6 * S }} />
+        left: 432 * S,
+        top: 582 * S,
+        width: 216 * S,
+        textAlign: 'center',
+        fontFamily: "'IBM Plex Sans', sans-serif",
+        fontWeight: 500,
+        fontSize: 21.6 * S,
+        lineHeight: `${38.4 * S}px`,
+        color: '#ffffff',
+        whiteSpace: 'nowrap',
+      }}>
+        www.getpowerplay.ai
+      </div>
     </div>
   )
 }
