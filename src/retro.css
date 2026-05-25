@@ -629,11 +629,11 @@
 .bed-screw.s3 { top: 18px; left: 22px; }
 .bed-screw.s4 { bottom: 18px; right: 22px; }
 
-/* dark smoked-green glass laid over the internals + scan lamp (below the card) */
+/* dark smoked-green glass laid over the internals (below the lamp + card) */
 .glass-tint {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 1;
   pointer-events: none;
   background: linear-gradient(135deg,
     rgba(13, 38, 27, 0.68) 0%,
@@ -699,25 +699,48 @@
 .scan-bar {
   position: absolute;
   left: 0; right: 0; top: 0;
-  height: 84px;
-  z-index: 1; /* under the smoked glass — reads as a lamp moving inside the machine */
+  height: 120px;
+  z-index: 2; /* above the smoked glass — a bright lamp whose light fills the platen */
   pointer-events: none;
   background: linear-gradient(180deg,
-    rgba(170, 255, 205, 0) 0%,
-    rgba(190, 255, 215, 0.45) 40%,
-    rgba(240, 255, 245, 1) 50%,
-    rgba(190, 255, 215, 0.45) 60%,
-    rgba(170, 255, 205, 0) 100%);
-  box-shadow: 0 0 24px rgba(150, 255, 190, 0.7);
+    rgba(190, 255, 220, 0) 0%,
+    rgba(205, 255, 225, 0.55) 36%,
+    rgba(250, 255, 252, 1) 50%,
+    rgba(205, 255, 225, 0.55) 64%,
+    rgba(190, 255, 220, 0) 100%);
+  /* big soft bloom that throws light onto the surrounding glass + internals */
+  box-shadow: 0 0 70px 24px rgba(170, 255, 205, 0.8);
+  mix-blend-mode: screen; /* additive — brightens whatever is below */
   opacity: 0;
 }
+/* Animate `top` (its % is relative to the glass) so the lamp sweeps the FULL
+   platen height — including behind the card — not just its own 120px box. */
 @keyframes scan-sweep {
-  0%   { transform: translateY(-90px); opacity: 0; }
-  10%  { opacity: 1; }
-  88%  { opacity: 1; }
-  100% { transform: translateY(calc(100% + 90px)); opacity: 0; }
+  0%   { top: -120px; opacity: 0; }
+  7%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
 }
-.scan-bar.run { animation: scan-sweep 0.55s ease-in; }
+.scan-bar.run { animation: scan-sweep 1.3s ease-in-out; }
+
+/* ambient light wash — the whole platen lifts/glows while scanning */
+.scan-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(150% 60% at 50% 50%, rgba(165, 255, 200, 0.4) 0%, rgba(165, 255, 200, 0) 68%);
+  mix-blend-mode: screen;
+  opacity: 0;
+}
+@keyframes scan-bloom {
+  0%   { opacity: 0; }
+  30%  { opacity: 0.85; }
+  72%  { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+.scan-glow { animation: scan-bloom 1.3s ease-in-out; }
 
 /* ── Flip button (bottom-centre of scanner) ───────────────────────────────── */
 .flip-dock {

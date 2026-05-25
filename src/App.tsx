@@ -3,6 +3,7 @@ import InputPanel from './components/InputPanel'
 import CardFront from './components/CardFront'
 import CardBack from './components/CardBack'
 import { exportToPdf } from './utils/exportPdf'
+import { playScanSound } from './utils/scanSound'
 
 export interface CardData {
   firstName: string
@@ -61,14 +62,15 @@ export default function App() {
     setShowBack(s => !s)
   }
 
-  // Export = run the scan light fast top→bottom under the glass, THEN export.
+  // Export = run the scan light + copier sound (~0.85s), THEN export.
   // Timer-driven (not onAnimationEnd) so the export always fires, even where
   // CSS animation end events don't (reduced-motion / backgrounded tabs).
-  const SCAN_MS = 600
+  const SCAN_MS = 1300
   const handleExport = () => {
     if (exporting) return
     setExporting(true)   // button → "Printing…", disabled
-    setScanning(true)    // scan-bar sweeps under the glass
+    setScanning(true)    // bright lamp sweeps across the platen
+    playScanSound(SCAN_MS)
     window.setTimeout(async () => {
       setScanning(false)
       try {
@@ -122,11 +124,16 @@ export default function App() {
             <span className="bed-screw s4" />
           </div>
 
-          {/* scanner lamp — sweeps under the glass on export only */}
-          {scanning && <div className="scan-bar run" />}
-
-          {/* dark green-tinted glass laid over the internals + lamp */}
+          {/* dark green-tinted glass laid over the internals */}
           <div className="glass-tint" />
+
+          {/* scanner lamp — bright sweep + bloom across the platen, on export only */}
+          {scanning && (
+            <>
+              <div className="scan-glow" style={{ animationDuration: `${SCAN_MS}ms` }} />
+              <div className="scan-bar run" style={{ animationDuration: `${SCAN_MS}ms` }} />
+            </>
+          )}
 
           <div className="platen-fit" style={{ transform: `scale(${fit})` }}>
             <div className="platen-stage">
