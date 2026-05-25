@@ -1,0 +1,26 @@
+# Netlify deploy config for the Visiting Card Copier.
+# Static SPA in dist/ + a serverless function for the Gemini photo proxy.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 8 requires Node 20.19+ / 22.12+; pin to 22 (Netlify default may be older).
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Front-end calls /api/process-photo → route it to the serverless function.
+[[redirects]]
+  from = "/api/process-photo"
+  to = "/.netlify/functions/process-photo"
+  status = 200
+
+# SPA fallback (single page; keeps deep links serving index.html).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
